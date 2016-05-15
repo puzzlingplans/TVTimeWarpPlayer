@@ -1,13 +1,25 @@
 
 from listing import *
 import subprocess, datetime, os, signal, curses, logging
+import ConfigParser
+
+cfgfn = 'tvtimewarp.cfg'
+config = ConfigParser.SafeConfigParser({
+    'channel':'57',
+    'area':'free',
+})
+config.read(cfgfn)
+try:
+    config.add_section('Player')
+except:
+    pass
 
 class Player:
 
     def __init__(self):
-        self.area = ChannelArea('free')
+        self.area = ChannelArea(config.get('Player', 'area'))
         self.listing = ChannelListing(self.area)
-        self.channel = 57
+        self.channel = config.getint('Player', 'channel')
         self.schedule = None
         self.proc = None
 
@@ -20,7 +32,7 @@ class Player:
         if item is not None:
             stdscr.addstr(1, 0, item['name'])
             stdscr.addstr(2, 0, item['title'])
-            stdscr.addstr(3, 0, '%4.1f mins' % item['duration'])
+            stdscr.addstr(3, 0, '%5.1f mins' % item['duration'])
         stdscr.refresh()
 
     def play_next(self, stdscr):
@@ -93,7 +105,7 @@ def main(stdscr):
                     player.set_channel(player.channel + 1)
                 elif ch == 258 or ch == 260:
                     player.set_channel(player.channel - 1)
-                elif ch == 27:
+                elif ch == 27 or ch == 0x51 or ch == 0x71:
                     return
                 else:
                     logging.debug(str(ch))
@@ -102,3 +114,6 @@ try:
     curses.wrapper(main)
 finally:
     player.stop()
+    config.set('Player', 'channel', str(player.channel))
+    with open(cfgfn, 'w') as f:
+        config.write(f)
